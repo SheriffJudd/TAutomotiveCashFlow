@@ -34,12 +34,13 @@ jobs:
       - name: Extract app
         run: |
           unzip "TAutomotiveCashFlow-v2.zip" -d source
-      
 
-      - name: Fix Compose import
+      - name: Fix Compose imports
         run: |
-          sed -i 's/import androidx.compose.ui.text.input.KeyboardOptions/import androidx.compose.foundation.text.KeyboardOptions/' \
-          source/TAutomotiveCashFlow/app/src/main/java/com/tautomotive/cashflow/ui/screens/AddEditTransactionScreen.kt
+          FILE="source/TAutomotiveCashFlow/app/src/main/java/com/tautomotive/cashflow/ui/screens/AddEditTransactionScreen.kt"
+
+          sed -i 's/import androidx.compose.ui.text.input.KeyboardOptions/import androidx.compose.foundation.text.KeyboardOptions/' "$FILE"
+          sed -i '/import androidx.compose.foundation.layout.weight/d' "$FILE"
 
       - name: Build APK
         run: |
@@ -49,5 +50,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: TAutomotiveCashFlow-APK
+          name: TAutomotiveCashFlow-v2-APK
           path: source/TAutomotiveCashFlow/app/build/outputs/apk/debug/app-debug.apk
