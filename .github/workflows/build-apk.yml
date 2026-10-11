@@ -31,16 +31,9 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract app
+      - name: Extract v3 app
         run: |
-          unzip "TAutomotiveCashFlow-v2.zip" -d source
-
-      - name: Fix Compose imports
-        run: |
-          FILE="source/TAutomotiveCashFlow/app/src/main/java/com/tautomotive/cashflow/ui/screens/AddEditTransactionScreen.kt"
-
-          sed -i 's/import androidx.compose.ui.text.input.KeyboardOptions/import androidx.compose.foundation.text.KeyboardOptions/' "$FILE"
-          sed -i '/import androidx.compose.foundation.layout.weight/d' "$FILE"
+          unzip "TAutomotiveCashFlow-v3.zip" -d source
 
       - name: Restore signing key
         env:
@@ -65,25 +58,25 @@ jobs:
 
           "$BUILD_TOOLS/zipalign" -v -p 4 \
             source/TAutomotiveCashFlow/app/build/outputs/apk/release/app-release-unsigned.apk \
-            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2-aligned.apk
+            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3-aligned.apk
 
           "$BUILD_TOOLS/apksigner" sign \
             --ks release.jks \
             --ks-key-alias tautomotive \
             --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
             --key-pass env:ANDROID_KEYSTORE_PASSWORD \
-            --out source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2.apk \
-            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2-aligned.apk
+            --out source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3.apk \
+            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3-aligned.apk
 
       - name: Verify APK signature
         run: |
           /usr/local/lib/android/sdk/build-tools/35.0.0/apksigner verify \
             --verbose \
             --print-certs \
-            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2.apk
+            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3.apk
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: TAutomotiveCashFlow-v2-SIGNED
-          path: source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2.apk
+          name: TAutomotiveCashFlow-v3-SIGNED
+          path: source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3.apk
