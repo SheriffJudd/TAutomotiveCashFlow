@@ -42,13 +42,44 @@ jobs:
           sed -i 's/import androidx.compose.ui.text.input.KeyboardOptions/import androidx.compose.foundation.text.KeyboardOptions/' "$FILE"
           sed -i '/import androidx.compose.foundation.layout.weight/d' "$FILE"
 
-      - name: Build APK
+      - name: Restore signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release.jks
+
+      - name: Build release APK
         run: |
           cd source/TAutomotiveCashFlow
-          gradle :app:assembleDebug --stacktrace
+          gradle :app:assembleRelease --stacktrace
 
-      - name: Upload APK
+      - name: Sign APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          BUILD_TOOLS="/usr/local/lib/android/sdk/build-tools/35.0.0"
+
+          "$BUILD_TOOLS/zipalign" -v -p 4 \
+            source/TAutomotiveCashFlow/app/build/outputs/apk/release/app-release-unsigned.apk \
+            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2-aligned.apk
+
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks release.jks \
+            --ks-key-alias tautomotive \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --out source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2.apk \
+            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2-aligned.apk
+
+      - name: Verify APK signature
+        run: |
+          /usr/local/lib/android/sdk/build-tools/35.0.0/apksigner verify \
+            --verbose \
+            --print-certs \
+            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2.apk
+
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: TAutomotiveCashFlow-v2-APK
-          path: source/TAutomotiveCashFlow/app/build/outputs/apk/debug/app-debug.apk
+          name: TAutomotiveCashFlow-v2-SIGNED
+          path: source/TAutomotiveCashFlow/TAutomotiveCashFlow-v2.apk
