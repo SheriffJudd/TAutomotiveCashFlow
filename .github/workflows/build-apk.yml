@@ -35,6 +35,11 @@ jobs:
         run: |
           unzip "TAutomotiveCashFlow-v1 (1).zip" -d source
 
+      - name: Fix Compose import
+        run: |
+          sed -i 's/import androidx.compose.ui.text.input.KeyboardOptions/import androidx.compose.foundation.text.KeyboardOptions/' \
+          source/TAutomotiveCashFlow/app/src/main/java/com/tautomotive/cashflow/ui/screens/AddEditTransactionScreen.kt
+
       - name: Build APK
         run: |
           cd source/TAutomotiveCashFlow
