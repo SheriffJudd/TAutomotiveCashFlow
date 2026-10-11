@@ -33,7 +33,8 @@ jobs:
 
       - name: Extract app
         run: |
-          unzip "TAutomotiveCashFlow-v1 (1).zip" -d source
+          unzip "TAutomotiveCashFlow-v2.zip" -d source
+      
 
       - name: Fix Compose import
         run: |
