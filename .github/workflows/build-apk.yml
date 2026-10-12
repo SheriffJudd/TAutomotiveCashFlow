@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: tautomotive-android-build
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,9 +35,26 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract v3 app
+      - name: Find latest app version
+        id: app
         run: |
-          unzip "TAutomotiveCashFlow-v3.zip" -d source
+          ZIP_FILE="$(find . -maxdepth 1 -type f -name 'TAutomotiveCashFlow-v*.zip' -printf '%f\n' | sort -V | tail -n 1)"
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "No app ZIP found"
+            exit 1
+          fi
+
+          VERSION="${ZIP_FILE#TAutomotiveCashFlow-}"
+          VERSION="${VERSION%.zip}"
+
+          echo "Building $ZIP_FILE"
+          echo "zip=$ZIP_FILE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Extract app
+        run: |
+          unzip "${{ steps.app.outputs.zip }}" -d source
 
       - name: Restore signing key
         env:
@@ -55,28 +76,31 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           BUILD_TOOLS="/usr/local/lib/android/sdk/build-tools/35.0.0"
+          VERSION="${{ steps.app.outputs.version }}"
 
           "$BUILD_TOOLS/zipalign" -v -p 4 \
             source/TAutomotiveCashFlow/app/build/outputs/apk/release/app-release-unsigned.apk \
-            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3-aligned.apk
+            "source/TAutomotiveCashFlow/TAutomotiveCashFlow-${VERSION}-aligned.apk"
 
           "$BUILD_TOOLS/apksigner" sign \
             --ks release.jks \
             --ks-key-alias tautomotive \
             --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
             --key-pass env:ANDROID_KEYSTORE_PASSWORD \
-            --out source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3.apk \
-            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3-aligned.apk
+            --out "source/TAutomotiveCashFlow/TAutomotiveCashFlow-${VERSION}.apk" \
+            "source/TAutomotiveCashFlow/TAutomotiveCashFlow-${VERSION}-aligned.apk"
 
       - name: Verify APK signature
         run: |
+          VERSION="${{ steps.app.outputs.version }}"
+
           /usr/local/lib/android/sdk/build-tools/35.0.0/apksigner verify \
             --verbose \
             --print-certs \
-            source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3.apk
+            "source/TAutomotiveCashFlow/TAutomotiveCashFlow-${VERSION}.apk"
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: TAutomotiveCashFlow-v3-SIGNED
-          path: source/TAutomotiveCashFlow/TAutomotiveCashFlow-v3.apk
+          name: TAutomotiveCashFlow-${{ steps.app.outputs.version }}-SIGNED
+          path: source/TAutomotiveCashFlow/TAutomotiveCashFlow-${{ steps.app.outputs.version }}.apk
